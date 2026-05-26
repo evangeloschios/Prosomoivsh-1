@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Προσομοίωση Γεννήτριας Σ.Ρ.</title>
+  <style>
+    body{margin:0;padding:24px;font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Helvetica Neue,Arial;background:#fff9cc;color:#000000;font-size:18px;line-height:1.6}
+    h1{font-size:clamp(24px,3.8vw,36px);margin-bottom:4px;font-weight:bold}
+    .author{margin-bottom:20px;font-size:17px;color:#333;}
+    .sub{margin-bottom:24px;color:#333333;font-size:17px}
+    .card{border:1px solid #cccccc;border-radius:10px;background:#f9f9f9;margin-bottom:16px}
+    .card header{background:#eeeeee;padding:10px 12px;border-bottom:1px solid #cccccc}
+    .card h2{margin:0;font-size:20px;font-weight:bold}
+    .body{padding:14px}
+    .fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px}
+    .field{display:flex;flex-direction:column;gap:6px}
+    .label{font-size:15px;font-weight:600}
+    .input{display:flex;align-items:center;border:1px solid #cccccc;border-radius:8px;padding:10px;background:#ffffff}
+    .input input{border:none;outline:none;flex:1;font-size:17px}
+    .suffix{font-size:14px;color:#555555;margin-left:4px}
+    button{margin:4px;padding:10px 14px;border-radius:8px;border:1px solid #333333;background:#ffffff;color:#000000;font-size:16px;font-weight:700;cursor:pointer}
+    button.primary{background:#007bff;color:#ffffff;border-color:#007bff}
+    .results{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}
+    .metric{border:1px solid #cccccc;border-radius:8px;padding:12px;background:#ffffff;text-align:center}
+    .metric .name{font-size:15px;color:#000000;font-weight:bold;margin-bottom:8px}
+    .metric .value{font-size:20px;font-weight:bold}
+    .note{border-left:4px solid #fbbf24;background:#fff8e1;padding:6px 8px;margin:4px 0;border-radius:6px;font-size:16px}
+    .note.bad{border-left-color:#f87171;background:#ffecec}
+  </style>
+</head>
+<body>
+  <h1>Προσομοίωση Γεννήτριας Συνεχούς Ρεύματος</h1>
+  <div class="author"><b>Ε. Κοκκώδης</b></div>
+  <p class="sub">Δώσε οποιονδήποτε συνδυασμό από Ρκιν, U, I, Ρηλ, η, Ραπ, Ρμεταβλητές, Ρσταθερές και πάτησε Υπολογισμός.</p>
+
+  <section class="card">
+    <header>
+      <h2>Είσοδοι</h2>
+    </header>
+    <div class="body">
+      <div class="fields">
+        <div class="field"><div class="label">Κινητική ισχύς Ρκιν (W)</div><div class="input"><input id="Pkin"></div></div>
+        <div class="field"><div class="label">Τάση U (V)</div><div class="input"><input id="U"></div></div>
+        <div class="field"><div class="label">Ένταση I (A)</div><div class="input"><input id="I"></div></div>
+        <div class="field"><div class="label">Ηλεκτρική ισχύς Ρηλ (W)</div><div class="input"><input id="Pel"></div></div>
+        <div class="field"><div class="label">Βαθμός απόδοσης η</div><div class="input"><input id="eta"></div></div>
+        <div class="field"><div class="label">Απώλειες Ραπ (W)</div><div class="input"><input id="Ploss"></div></div>
+        <div class="field"><div class="label">Ρμεταβλητές (W)</div><div class="input"><input id="Pvar"></div></div>
+        <div class="field"><div class="label">Ρσταθερές (W)</div><div class="input"><input id="Pconst"></div></div>
+      </div>
+      <button class="primary" id="solveBtn">Υπολογισμός</button>
+      <button id="clearBtn">Καθαρισμός</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <header><h2>Αποτελέσματα</h2></header>
+    <div class="body">
+      <div class="results" id="results"></div>
+      <div id="notes"></div>
+    </div>
+  </section>
+
+  <script>
+    const ids=['Pkin','U','I','Pel','eta','Ploss','Pvar','Pconst'];
+    function parseNum(s){if(!s)return null;s=s.replace(',','.');let n=parseFloat(s);return isNaN(n)?null:n;}
+    function valid(x){return x!=null&&!isNaN(x);} 
+    function round6(x){return x==null?null:Math.round(x*1e6)/1e6;}
+    function solveDC(input){
+      const v={Pkin:null,U:null,I:null,Pel:null,eta:null,Ploss:null,Pvar:null,Pconst:null};
+      Object.assign(v,input);
+      let changed=true,guard=0;
+      while(changed&&guard<20){guard++;changed=false;let{Pkin,U,I,Pel,eta,Ploss,Pvar,Pconst}=v;
+        if(!valid(Pel)&&valid(U)&&valid(I)){v.Pel=U*I;changed=true;}
+        if(valid(Pel)&&valid(U)&&!valid(I)&&U!==0){v.I=Pel/U;changed=true;}
+        if(valid(Pel)&&valid(I)&&!valid(U)&&I!==0){v.U=Pel/I;changed=true;}
+        ({Pkin,U,I,Pel,eta,Ploss,Pvar,Pconst}=v);
+        if(valid(Pkin)&&valid(eta)&&!valid(Pel)){v.Pel=eta*Pkin;changed=true;}
+        if(valid(Pel)&&valid(eta)&&!valid(Pkin)&&eta!==0){v.Pkin=Pel/eta;changed=true;}
+        if(valid(Pkin)&&valid(Pel)&&!valid(eta)&&Pkin!==0){v.eta=Pel/Pkin;changed=true;}
+        ({Pkin,U,I,Pel,eta,Ploss,Pvar,Pconst}=v);
+        if(valid(Pkin)&&valid(Pel)&&!valid(Ploss)){v.Ploss=Pkin-Pel;changed=true;}
+        if(valid(Pkin)&&valid(Ploss)&&!valid(Pel)){v.Pel=Pkin-Ploss;changed=true;}
+        if(valid(Pel)&&valid(Ploss)&&!valid(Pkin)){v.Pkin=Pel+Ploss;changed=true;}
+        if(valid(Ploss)&&valid(Pvar)&&!valid(Pconst)){v.Pconst=Ploss-Pvar;changed=true;}
+        if(valid(Ploss)&&valid(Pconst)&&!valid(Pvar)){v.Pvar=Ploss-Pconst;changed=true;}
+        if(valid(Pvar)&&valid(Pconst)&&!valid(Ploss)){v.Ploss=Pvar+Pconst;changed=true;}
+      }
+      const notes=[];const{Pkin,U,I,Pel,eta,Ploss,Pvar,Pconst}=v;
+      if(valid(eta)&&!(eta>=0&&eta<=1)){notes.push('Προειδοποίηση: η εκτός 0-1');}
+      if(valid(Pkin)&&valid(Pel)&&Pkin<Pel){notes.push('Προειδοποίηση: Ρηλ>Ρκιν');}
+      if(valid(Ploss)&&Ploss<0){notes.push('Προειδοποίηση: Αρνητικές απώλειες');}
+      if(valid(Pvar)&&valid(Pconst)&&valid(Ploss)){
+        const diff = Math.abs((Pvar+Pconst) - Ploss);
+        if(diff > 1e-6){notes.push('Προειδοποίηση: Δεν ισχύει Ραπ = Ρμεταβλητές + Ρσταθερές (Διαφορά ' + (Math.round(diff*1e6)/1e6) + ' W)');}
+      }
+      const out={};for(const k in v)out[k]=round6(v[k]);
+      return{out,notes};
+    }
+
+    function readInputs(){const d={};for(const id of ids){d[id]=parseNum(document.getElementById(id).value);}return d;}
+    function writeInputs(o){for(const id of ids){document.getElementById(id).value=o[id]??'';}}
+
+    function render(out){
+      const r=document.getElementById('results');
+      const u={Pkin:'W',U:'V',I:'A',Pel:'W',eta:'—',Ploss:'W',Pvar:'W',Pconst:'W'};
+      const n={Pkin:'Ρκιν',U:'U',I:'I',Pel:'Ρηλ',eta:'η',Ploss:'Ραπ',Pvar:'Ρμεταβλητές',Pconst:'Ρσταθερές'};
+      r.innerHTML=ids.map(k=>`<div class='metric'><div class='name'>${n[k]}</div><div class='value'>${out[k]??'—'} ${u[k]}</div></div>`).join('');
+    }
+    function renderNotes(notes){document.getElementById('notes').innerHTML=notes.map(s=>`<div class='note'>${s}</div>`).join('');}
+
+    document.getElementById('solveBtn').onclick=()=>{const{out,notes}=solveDC(readInputs());render(out);renderNotes(notes);};
+    document.getElementById('clearBtn').onclick=()=>{writeInputs({});render({});renderNotes([]);};
+  </script>
+</body>
+</html>
